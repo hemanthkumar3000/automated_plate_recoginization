@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Vehicle Management - Access</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .ip-box {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .qr-code {
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 10px;
+            transition: transform 0.3s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .status {
+            color: green;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 College Vehicle Management System</h1>
+        <p>Access the system using the following URL:</p>
+        <div class="ip-box">
+            http://{{ server_ip }}:5000
+        </div>
+        <p>Scan QR code for quick access:</p>
+        <div class="qr-code" id="qrcode"></div>
+        <a href="/" class="btn">Open Dashboard</a>
+        <a href="http://{{ server_ip }}:5000" class="btn" target="_blank">Network Access</a>
+        <div class="status">
+            ✅ System is running and accessible on college network
+        </div>
+        <small style="display: block; margin-top: 20px;">
+            Make sure all devices are connected to the same network
+        </small>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs2@0.0.2/qrcode.min.js"></script>
+    <script>
+        new QRCode(document.getElementById("qrcode"), {
+            text: `http://{{ server_ip }}:5000`,
+            width: 150,
+            height: 150
+        });
+    </script>
+</body>
+</html>

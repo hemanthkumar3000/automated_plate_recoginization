@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Classifier</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="mb-4"><i class="fas fa-video"></i> Vehicle Video Classifier</h2>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-upload"></i> Upload Video
+                    </div>
+                    <div class="card-body">
+                        <input type="file" id="videoInput" class="form-control mb-3" accept="video/*">
+                        <button class="btn btn-success" onclick="classifyVideo()">
+                            <i class="fas fa-play"></i> Classify Video
+                        </button>
+                        <div id="loading" class="mt-3" style="display: none;">
+                            <div class="spinner-border text-success"></div> Processing video...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-chart-bar"></i> Classification Result
+                    </div>
+                    <div class="card-body" id="result">
+                        <p class="text-muted text-center">No video processed yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function classifyVideo() {
+            const file = document.getElementById('videoInput').files[0];
+            if (!file) {
+                alert('Please select a video file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('video', file);
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').innerHTML = '<p class="text-center">Processing video, please wait...</p>';
+            
+            fetch('/api/classify_video', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                let html = '<div class="alert alert-success">';
+                html += '<h5><i class="fas fa-check-circle"></i> Classification Results:</h5>';
+                html += '<hr>';
+                html += `<p><strong>Vehicle Type:</strong> <span class="badge bg-primary">${data.vehicle_type || 'Unknown'}</span></p>`;
+                html += `<p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(1)}%</p>`;
+                html += `<p><strong>Frames Processed:</strong> ${data.frames_processed || 0}</p>`;
+                
+                if (data.plate_number) {
+                    html += `<p><strong>Number Plate:</strong> <span class="badge bg-success">${data.plate_number}</span></p>`;
+                    if (data.entry_id) {
+                        html += `<p><strong>Entry ID:</strong> ${data.entry_id}</p>`;
+                    }
+                } else {
+                    html += `<p><strong>Number Plate:</strong> <span class="badge bg-warning">Not detected</span></p>`;
+                }
+                
+                html += '</div>';
+                document.getElementById('result').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('result').innerHTML = `
+                    <div class="alert alert-danger">
+                        Error: ${error.message}
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

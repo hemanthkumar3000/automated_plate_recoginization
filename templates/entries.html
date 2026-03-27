@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: #f5f5f5;
+        }
+        .status-parked {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .status-exited {
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f0f0f0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <div>
+                <button class="btn btn-outline-light btn-sm" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn btn-outline-light btn-sm ms-2" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="mb-4"><i class="fas fa-database"></i> Vehicle Records Database</h2>
+        
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white">
+                <div class="row">
+                    <div class="col-md-6">
+                        <i class="fas fa-list"></i> All Vehicle Entries
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by vehicle number..." onkeyup="searchVehicles()">
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Vehicle Number</th>
+                                <th>Vehicle Type</th>
+                                <th>Entry Time</th>
+                                <th>Exit Time</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entriesBody">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border text-primary"></div> Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exit Modal -->
+    <div class="modal fade" id="exitModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Vehicle Exit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Mark this vehicle as exited?</p>
+                    <p><strong>Vehicle Number:</strong> <span id="exitVehicleNumber"></span></p>
+                    <p><strong>Entry Time:</strong> <span id="exitEntryTime"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmExit()">Confirm Exit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentExitId = null;
+        
+        function loadEntries() {
+            fetch('/api/get_entries')
+                .then(res => res.json())
+                .then(entries => {
+                    let html = '';
+                    if (entries.length === 0) {
+                        html = '<tr><td colspan="8" class="text-center">No records found</td></tr>';
+                    } else {
+                        entries.forEach(entry => {
+                            html += `
+                                <tr>
+                                    <td>${entry.id}</td>
+                                    <td><strong>${entry.vehicle_number}</strong></td>
+                                    <td><span class="badge bg-info">${entry.vehicle_type || 'Unknown'}</span></td>
+                                    <td>${entry.entry_time || '-'}</td>
+                                    <td>${entry.exit_time || '-'}</td>
+                                    <td>${entry.duration || '-'}</td>
+                                    <td>
+                                        <span class="status-${entry.status}">
+                                            ${entry.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${entry.status === 'parked' ? 
+                                            `<button class="btn btn-sm btn-danger" onclick="showExitModal(${entry.id}, '${entry.vehicle_number}', '${entry.entry_time}')">
+                                                <i class="fas fa-sign-out-alt"></i> Exit
+                                            </button>` : 
+                                            '<span class="text-muted">Exited</span>'}
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    document.getElementById('entriesBody').innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('entriesBody').innerHTML = 
+                        '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+                    console.error('Error:', error);
+                });
+        }
+        
+        function searchVehicles() {
+            const query = document.getElementById('searchInput').value;
+            if (query.length < 2) {
+                loadEntries();
+                return;
+            }
+            
+            fetch(`/api/search?q=${query}`)
+                .then(res => res.json())
+                .then(entries => {
+                    let html = '';
+                    entries.forEach(entry => {
+                        html += `
+                            <tr>
+                                <td>${entry.id}</td>
+                                <td><strong>${entry.vehicle_number}</strong></td>
+                                <td>${entry.vehicle_type || 'Unknown'}</td>
+                                <td>${entry.entry_time || '-'}</td>
+                                <td>${entry.exit_time || '-'}</td>
+                                <td>${entry.duration || '-'}</td>
+                                <td>
+                                    <span class="status-${entry.status}">
+                                        ${entry.status.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td>
+                                    ${entry.status === 'parked' ? 
+                                        `<button class="btn btn-sm btn-danger" onclick="showExitModal(${entry.id}, '${entry.vehicle_number}', '${entry.entry_time}')">
+                                            <i class="fas fa-sign-out-alt"></i> Exit
+                                        </button>` : 
+                                        '<span class="text-muted">Exited</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    document.getElementById('entriesBody').innerHTML = html;
+                });
+        }
+        
+        function showExitModal(id, vehicleNumber, entryTime) {
+            currentExitId = id;
+            document.getElementById('exitVehicleNumber').textContent = vehicleNumber;
+            document.getElementById('exitEntryTime').textContent = entryTime;
+            new bootstrap.Modal(document.getElementById('exitModal')).show();
+        }
+        
+        function confirmExit() {
+            fetch('/api/exit_vehicle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: currentExitId})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    loadEntries();
+                    document.getElementById('exitModal').querySelector('.btn-close').click();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        }
+        
+        function refreshData() {
+            loadEntries();
+        }
+        
+        function exportData() {
+            window.location.href = '/export_data';
+        }
+        
+        // Load entries on page load
+        loadEntries();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadEntries, 30000);
+    </script>
+</body>
+</html>
